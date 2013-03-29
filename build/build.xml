@@ -1,0 +1,64 @@
+<project name="distro.build" default="build" basedir="./" xmlns:antcontrib="antlib:net.sf.antcontrib">
+
+	<loadproperties srcfile="build.properties"/>
+	<import file="${cfdistro.build.file}"/>
+
+	<target name="build" depends="cfdistro.build, src.to.mappings.xml, set.mappings">
+		<zip destfile="${dist.dir}/fw1.zip" basedir="${src.dir}" includes="org/**" />
+		<zip destfile="${dist.dir}/fw1-all.zip" basedir="${src.dir}" />
+		<loadfile srcFile="${src.dir}/org/corfield/framework.cfc" property="fw1.version"/>
+		<antcontrib:propertyregex override="yes" property="fw1.version" input="${fw1.version}" 
+			regexp=".*?variables.framework.version\s?=\s?&apos;([^&apos;]+).*?" select="\1" />
+		<echo message="FW/1 Version: ${fw1.version}" />
+	</target>
+
+	<target name="build.mvn.release" depends="build.mxunit.tests.run">
+		<!-- 
+	   	<property name="release.repo.user" value="admin" />
+	   	<property name="release.repo.password" value="admin123" />
+	    <mvn-repo id="release.repo" url="http://127.0.0.1:8081/nexus/content/repositories/release">
+	    	<authentication>
+	    		<authentication username="${release.repo.user}" password="${release.repo.password}"/>
+    		</authentication>
+	    </mvn-repo>
+
+		<mvn-put artifact="${dist.dir}/fw1.zip" packaging="zip" repoId="release.repo"
+		 groupId="org.corfield" artifactId="fw1" version="${fw1.version}"/>
+		 -->
+		<property name="target.repo.id" value="cfdistro.repo.local" />
+
+		<mvn-put artifact="${dist.dir}/fw1.zip" packaging="zip" repoId="${target.repo.id}"
+		 groupId="riaforge.org" artifactId="fw1" version="${fw1.version}"/>
+
+		<mvn-put artifact="${dist.dir}/fw1-all.zip" packaging="zip" repoId="${target.repo.id}"
+		 groupId="riaforge.org" artifactId="fw1-all" version="${fw1.version}"/>
+		
+		<!--  create an extension -->
+	    <delete dir="${basedir}/extensionbase/" />
+	    <mkdir dir="${basedir}/extensionbase/" />
+		<copy todir="${basedir}/extensionbase/applications/org">
+			<fileset dir="${src.dir}/org" />
+		</copy>
+		<antcontrib:runtarget target="extension.build" />
+	    <delete dir="${basedir}/extensionbase/" />
+
+		<!-- add the extension as well -->
+		<mvn-put artifact="${extension.dist}/${extension.archive}" packaging="zip" repoId="${target.repo.id}"
+		 groupId="cfml.extensions" artifactId="fw1" version="${extension.version}"/>
+
+	</target>	
+
+			<!-- these are just here for the Eclipse Ant UI ordering -->
+	<target name="build.start.launch">
+		<antcontrib:runtarget target="cfdistro.build.start.launch" />
+	</target>	
+
+	<target name="build.start" depends="build">
+		<antcontrib:runtarget target="server.start" />
+	</target>	
+
+	<target name="build.stop">
+		<antcontrib:runtarget target="server.stop" />
+	</target>	
+	
+</project>
