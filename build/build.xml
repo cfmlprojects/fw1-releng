@@ -30,12 +30,12 @@
 		<module artifactId="di1" groupId="org.framework-one" version="${di1.version}" packaging="zip" buildtype="${mvn.type}">
 			<fileset dir="${src.dir}/framework/" includes="ioc*,Wire*" />
 		</module>
-		<module artifactId="aop1" groupId="org.framework-one" version="${di1.version}" packaging="zip" buildtype="${mvn.type}">
+		<module artifactId="aop1" groupId="org.framework-one" version="${aop1.version}" packaging="zip" buildtype="${mvn.type}">
 			<fileset dir="${src.dir}/framework/" includes="aop*,bean*" />
 		</module>
 	</target>
 
-	<target name="build.mvn.release" depends="project.update, build.mxunit.tests.run">
+	<target name="build.mvn.release" depends="project.update, build.mxunit.tests.run, build.framework">
 		<!-- 
 	   	<property name="release.repo.user" value="admin" />
 	   	<property name="release.repo.password" value="admin123" />
