@@ -3,16 +3,39 @@
 	<loadproperties srcfile="build.properties"/>
 	<import file="${cfdistro.build.file}"/>
 
-	<target name="build" depends="cfdistro.build, src.to.mappings.xml, set.mappings">
-		<zip destfile="${dist.dir}/fw1.zip" basedir="${src.dir}" includes="org/**" />
-		<zip destfile="${dist.dir}/fw1-all.zip" basedir="${src.dir}" />
-		<loadfile srcFile="${src.dir}/org/corfield/framework.cfc" property="fw1.version"/>
+	<target name="fw1.version">
+		<antcontrib:if>
+			<available file="${src.dir}/framework/one.cfc" />
+			<then>
+				<loadfile srcFile="${src.dir}/framework/one.cfc" property="fw1.version"/>
+				<property name="has.framework.layout" value="true" />
+			</then>
+			<else>
+				<loadfile srcFile="${src.dir}/org/corfield/framework.cfc" property="fw1.version"/>
+				<property name="has.framework.layout" value="false" />
+			</else>				
+		</antcontrib:if>
 		<antcontrib:propertyregex override="yes" property="fw1.version" input="${fw1.version}" 
-			regexp=".*?variables.framework.version\s?=\s?&apos;([^&apos;]+).*?" select="\1" />
-		<echo message="FW/1 Version: ${fw1.version}" />
+			regexp=".*?version\s?=\s?&#x22;([^&#x22;]+).*?|.*?version\s?=\s?&apos;([^&apos;]+).*?" select="\1\2" global="false" />
+		<echo message="FW/1 Version: |${fw1.version}|" />
 	</target>
 
-	<target name="build.mvn.release" depends="build.mxunit.tests.run">
+	<target name="build" depends="cfdistro.build, fw1.version">
+		<dependency groupId="org.mxunit" artifactId="core" version="${mxunit.version}" mapping="/mxunit" />
+	</target>
+
+	<target name="build.framework" depends="build" if="${has.framework.layout}">
+		<version_file_regex property="di1.version" key="di1_version" file="${src.dir}/framework/ioc.cfc" />
+		<version_file_regex property="aop1.version" key="aop1_version" file="${src.dir}/framework/aop.cfc" />
+		<module artifactId="di1" groupId="org.framework-one" version="${di1.version}" packaging="zip" buildtype="${mvn.type}">
+			<fileset dir="${src.dir}/framework/" includes="ioc*,Wire*" />
+		</module>
+		<module artifactId="aop1" groupId="org.framework-one" version="${di1.version}" packaging="zip" buildtype="${mvn.type}">
+			<fileset dir="${src.dir}/framework/" includes="aop*,bean*" />
+		</module>
+	</target>
+
+	<target name="build.mvn.release" depends="project.update, build.mxunit.tests.run">
 		<!-- 
 	   	<property name="release.repo.user" value="admin" />
 	   	<property name="release.repo.password" value="admin123" />
@@ -27,38 +50,47 @@
 		 -->
 		<property name="target.repo.id" value="cfdistro.repo.local" />
 
-		<mvn-put artifact="${dist.dir}/fw1.zip" packaging="zip" repoId="${target.repo.id}"
-		 groupId="riaforge.org" artifactId="fw1" version="${fw1.version}"/>
+		<module buildtype="${mvn.type}"
+			artifactId="fw1" groupId="org.framework-one" version="${fw1.version}" packaging="zip">
+			<fileset dir="${src.dir}/org/corfield" erroronmissingdir="false"/>
+			<fileset dir="${src.dir}/framework" />
+		</module>
 
-		<mvn-put artifact="${dist.dir}/fw1-all.zip" packaging="zip" repoId="${target.repo.id}"
-		 groupId="riaforge.org" artifactId="fw1-all" version="${fw1.version}"/>
+		<module buildtype="${mvn.type}"
+			artifactId="fw1-all" groupId="org.framework-one" version="${fw1.version}" packaging="zip">
+			<fileset dir="${src.dir}/" excludes="framework/**, org/**" />
+			<fileset dir="${src.dir}/org/corfield" erroronmissingdir="false" />
+			<fileset dir="${src.dir}/framework" />
+		</module>		
 		
 		<!--  create an extension -->
-	    <delete dir="${basedir}/extensionbase/" />
-	    <mkdir dir="${basedir}/extensionbase/" />
+    <delete dir="${basedir}/extensionbase/" />
+    <mkdir dir="${basedir}/extensionbase/" />
 		<copy todir="${basedir}/extensionbase/applications/org">
-			<fileset dir="${src.dir}/org" />
+			<fileset dir="${src.dir}/org" erroronmissingdir="false" />
+		</copy>
+		<copy todir="${basedir}/extensionbase/applications/framework">
+			<fileset dir="${src.dir}/org" erroronmissingdir="framework" />
 		</copy>
 		<antcontrib:runtarget target="extension.build" />
-	    <delete dir="${basedir}/extensionbase/" />
+    <delete dir="${basedir}/extensionbase/" />
 
 		<!-- add the extension as well -->
 		<mvn-put artifact="${extension.dist}/${extension.archive}" packaging="zip" repoId="${target.repo.id}"
 		 groupId="cfml.extensions" artifactId="fw1" version="${extension.version}"/>
 
-	</target>	
-
-			<!-- these are just here for the Eclipse Ant UI ordering -->
-	<target name="build.start.launch">
-		<antcontrib:runtarget target="cfdistro.build.start.launch" />
-	</target>	
-
-	<target name="build.start" depends="build">
-		<antcontrib:runtarget target="server.start" />
-	</target>	
-
-	<target name="build.stop">
-		<antcontrib:runtarget target="server.stop" />
-	</target>	
+	</target>
+	
+	<macrodef name="version_file_regex">
+		<attribute name="file" />
+		<attribute name="key" />
+		<attribute name="property" />
+		<sequential>
+			<loadfile srcFile="@{file}" property="@{property}"/>
+			<antcontrib:propertyregex override="yes" property="@{property}" input="${@{property}}" 
+				regexp=".*?@{key}\s?=\s?&#x22;([^&#x22;]+).*?|.*?@{key}\s?=\s?&apos;([^&apos;]+).*?" select="\1\2" global="false" />
+			<echo message="@{property}: |${@{property}}|" />
+		</sequential>
+	</macrodef>
 	
 </project>
