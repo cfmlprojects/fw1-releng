@@ -1,42 +1,30 @@
 <project name="distro.build" default="build" basedir="./" xmlns:antcontrib="antlib:net.sf.antcontrib">
 
-	<loadproperties srcfile="build.properties"/>
-	<import file="${cfdistro.build.file}"/>
+  <loadproperties srcfile="build.properties" />
+  <import file="${cfdistro.build.file}" />
 
-	<target name="fw1.version">
-		<antcontrib:if>
-			<available file="${src.dir}/framework/one.cfc" />
-			<then>
-				<loadfile srcFile="${src.dir}/framework/one.cfc" property="fw1.version"/>
-				<property name="has.framework.layout" value="true" />
-			</then>
-			<else>
-				<loadfile srcFile="${src.dir}/org/corfield/framework.cfc" property="fw1.version"/>
-				<property name="has.framework.layout" value="false" />
-			</else>				
-		</antcontrib:if>
-		<antcontrib:propertyregex override="yes" property="fw1.version" input="${fw1.version}" 
-			regexp=".*?version\s?=\s?&#x22;([^&#x22;]+).*?|.*?version\s?=\s?&apos;([^&apos;]+).*?" select="\1\2" global="false" />
-		<echo message="FW/1 Version: |${fw1.version}|" />
-	</target>
+  <target name="fw1.version">
+    <antcontrib:if>
+      <available file="${src.dir}/framework/one.cfc" />
+      <then>
+        <loadfile srcFile="${src.dir}/framework/one.cfc" property="fw1.version" />
+        <property name="has.framework.layout" value="true" />
+      </then>
+      <else>
+        <loadfile srcFile="${src.dir}/org/corfield/framework.cfc" property="fw1.version" />
+        <property name="has.framework.layout" value="false" />
+      </else>
+    </antcontrib:if>
+    <antcontrib:propertyregex override="yes" property="fw1.version" input="${fw1.version}" regexp=".*?version\s?=\s?&#x22;([^&#x22;]+).*?|.*?version\s?=\s?&apos;([^&apos;]+).*?" select="\1\2" global="false" />
+    <echo message="FW/1 Version: |${fw1.version}|" />
+  </target>
 
-	<target name="build" depends="cfdistro.build, fw1.version">
-		<dependency groupId="org.mxunit" artifactId="core" version="${mxunit.version}" mapping="/mxunit" />
-	</target>
+  <target name="build" depends="cfdistro.build, fw1.version">
+    <dependency groupId="org.mxunit" artifactId="core" version="${mxunit.version}" mapping="/mxunit" />
+  </target>
 
-	<target name="build.framework" depends="build" if="${has.framework.layout}">
-		<version_file_regex property="di1.version" key="di1_version" file="${src.dir}/framework/ioc.cfc" />
-		<version_file_regex property="aop1.version" key="aop1_version" file="${src.dir}/framework/aop.cfc" />
-		<module artifactId="di1" groupId="org.framework-one" version="${di1.version}" packaging="zip" buildtype="${mvn.type}">
-			<fileset dir="${src.dir}/framework/" includes="ioc*,Wire*" />
-		</module>
-		<module artifactId="aop1" groupId="org.framework-one" version="${aop1.version}" packaging="zip" buildtype="${mvn.type}">
-			<fileset dir="${src.dir}/framework/" includes="aop*,bean*" />
-		</module>
-	</target>
-
-	<target name="build.mvn.release" depends="project.update, build.mxunit.tests.run, build.framework">
-		<!-- 
+  <target name="build.mvn.release" depends="project.update, build.mxunit.tests.run">
+    <!-- 
 	   	<property name="release.repo.user" value="admin" />
 	   	<property name="release.repo.password" value="admin123" />
 	    <mvn-repo id="release.repo" url="http://127.0.0.1:8081/nexus/content/repositories/release">
@@ -48,49 +36,65 @@
 		<mvn-put artifact="${dist.dir}/fw1.zip" packaging="zip" repoId="release.repo"
 		 groupId="org.corfield" artifactId="fw1" version="${fw1.version}"/>
 		 -->
-		<property name="target.repo.id" value="cfdistro.repo.local" />
+    <property name="target.repo.id" value="cfdistro.repo.local" />
 
-		<module buildtype="${mvn.type}"
-			artifactId="fw1" groupId="org.framework-one" version="${fw1.version}" packaging="zip">
-			<fileset dir="${src.dir}/org/corfield" erroronmissingdir="false"/>
-			<fileset dir="${src.dir}/framework" />
-		</module>
+    <module buildtype="${mvn.type}" artifactId="one" groupId="org.framework-one" version="${fw1.version}" packaging="zip">
+      <fileset dir="${src.dir}/org/corfield" erroronmissingdir="false" />
+      <fileset dir="${src.dir}/framework" includes="one.cfc" />
+    </module>
 
-		<module buildtype="${mvn.type}"
-			artifactId="fw1-all" groupId="org.framework-one" version="${fw1.version}" packaging="zip">
-			<fileset dir="${src.dir}/" excludes="framework/**, org/**" />
-			<fileset dir="${src.dir}/org/corfield" erroronmissingdir="false" />
-			<fileset dir="${src.dir}/framework" />
-		</module>		
-		
-		<!--  create an extension -->
+    <module buildtype="${mvn.type}" artifactId="fw1" groupId="org.framework-one" version="${fw1.version}" packaging="zip">
+      <fileset dir="${src.dir}/org/corfield" erroronmissingdir="false" />
+      <fileset dir="${src.dir}/framework" excludes="*Application.cfc" />
+    </module>
+
+    <module buildtype="${mvn.type}" artifactId="fw1-all" groupId="org.framework-one" version="${fw1.version}" packaging="zip">
+      <fileset dir="${src.dir}/" excludes="framework/**, org/**" />
+      <fileset dir="${src.dir}/org/corfield" erroronmissingdir="false" />
+      <fileset dir="${src.dir}/framework" />
+    </module>
+
+    <version_file_regex property="di1.version" key="di1_version" file="${src.dir}/framework/ioc.cfc" />
+    <version_file_regex property="aop1.version" key="aop1_version" file="${src.dir}/framework/aop.cfc" />
+
+    <module artifactId="di1" groupId="org.framework-one" version="${di1.version}" packaging="zip" buildtype="${mvn.type}">
+      <fileset dir="${src.dir}/framework/" includes="ioc*,Wire*" />
+      <dependency groupId="org.framework-one" artifactId="one" version="${fw1.version}" type="zip" />
+    </module>
+
+    <module artifactId="aop1" groupId="org.framework-one" version="${aop1.version}" packaging="zip" buildtype="${mvn.type}">
+      <fileset dir="${src.dir}/framework/" includes="aop*,bean*" />
+      <dependencies>
+        <dependency groupId="org.framework-one" artifactId="one" version="${fw1.version}" type="zip" />
+      </dependencies>
+    </module>
+
+    <!--  create an extension -->
     <delete dir="${basedir}/extensionbase/" />
     <mkdir dir="${basedir}/extensionbase/" />
-		<copy todir="${basedir}/extensionbase/applications/org">
-			<fileset dir="${src.dir}/org" erroronmissingdir="false" />
-		</copy>
-		<copy todir="${basedir}/extensionbase/applications/framework">
-			<fileset dir="${src.dir}/org" erroronmissingdir="framework" />
-		</copy>
-		<antcontrib:runtarget target="extension.build" />
+    <copy todir="${basedir}/extensionbase/applications/org">
+      <fileset dir="${src.dir}/org" erroronmissingdir="false" />
+    </copy>
+    <copy todir="${basedir}/extensionbase/applications/framework">
+      <fileset dir="${src.dir}/org" erroronmissingdir="framework" />
+    </copy>
+    <antcontrib:runtarget target="extension.build" />
     <delete dir="${basedir}/extensionbase/" />
 
-		<!-- add the extension as well -->
-		<mvn-put artifact="${extension.dist}/${extension.archive}" packaging="zip" repoId="${target.repo.id}"
-		 groupId="cfml.extensions" artifactId="fw1" version="${extension.version}"/>
+    <!-- add the extension as well -->
+    <mvn-put artifact="${extension.dist}/${extension.archive}" packaging="zip" repoId="${target.repo.id}" groupId="cfml.extensions" artifactId="fw1" version="${extension.version}" />
 
-	</target>
-	
-	<macrodef name="version_file_regex">
-		<attribute name="file" />
-		<attribute name="key" />
-		<attribute name="property" />
-		<sequential>
-			<loadfile srcFile="@{file}" property="@{property}"/>
-			<antcontrib:propertyregex override="yes" property="@{property}" input="${@{property}}" 
-				regexp=".*?@{key}\s?=\s?&#x22;([^&#x22;]+).*?|.*?@{key}\s?=\s?&apos;([^&apos;]+).*?" select="\1\2" global="false" />
-			<echo message="@{property}: |${@{property}}|" />
-		</sequential>
-	</macrodef>
-	
+  </target>
+
+  <macrodef name="version_file_regex">
+    <attribute name="file" />
+    <attribute name="key" />
+    <attribute name="property" />
+    <sequential>
+      <loadfile srcFile="@{file}" property="@{property}" />
+      <antcontrib:propertyregex override="yes" property="@{property}" input="${@{property}}" regexp=".*?@{key}\s?=\s?&#x22;([^&#x22;]+).*?|.*?@{key}\s?=\s?&apos;([^&apos;]+).*?" select="\1\2" global="false" />
+      <echo message="@{property}: |${@{property}}|" />
+    </sequential>
+  </macrodef>
+
 </project>
